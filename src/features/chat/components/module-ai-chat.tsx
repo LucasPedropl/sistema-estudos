@@ -23,7 +23,7 @@ export function ModuleAIChat({ moduleId }: { moduleId: string }) {
   const [isTyping, setIsTyping] = useState(false);
   
   // Context Selection
-  const [contextMode, setContextMode] = useState<"all" | "current" | "contents" | "quizzes" | "notes">("all");
+  const [contextMode, setContextMode] = useState<"all" | "current" | "contents" | "quizzes" | "notes" | "current_question">("all");
   const pathname = usePathname();
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -71,6 +71,14 @@ export function ModuleAIChat({ moduleId }: { moduleId: string }) {
          contextStr += await fetchQuizzes();
       } else if (contextMode === "notes") {
          contextStr += await fetchNotes();
+      } else if (contextMode === "current_question") {
+         const currentQStr = localStorage.getItem("module_quiz_current");
+         if (currentQStr) {
+            const currentQ = JSON.parse(currentQStr);
+            contextStr += `--- QUESTÃO ATUAL DO QUIZ ---\nPergunta: ${currentQ.question}\nOpções:\n${currentQ.options.map((o:string, i:number) => `${i}: ${o}`).join('\n')}\n`;
+         } else {
+            contextStr += "(Nenhuma questão de quiz ativa no momento)";
+         }
       } else if (contextMode === "current") {
          // Auto-detect based on pathname
          if (pathname.includes("/conteudo/")) {
@@ -183,6 +191,7 @@ Responda em Markdown. Seja conciso e educado.`;
                 >
                   <option value="all">Todo o conhecimento do Módulo</option>
                   <option value="current">Apenas o Contexto da Página Atual</option>
+                  <option value="current_question">Apenas a Questão Atual (Economia)</option>
                   <option value="contents">Apenas Páginas de Conteúdo</option>
                   <option value="quizzes">Apenas Quizzes</option>
                   <option value="notes">Apenas Anotações</option>
