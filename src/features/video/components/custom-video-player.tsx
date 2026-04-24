@@ -122,6 +122,35 @@ export function CustomVideoPlayer({ src, onEnded, className, autoPlay = true }: 
   };
 
   useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle if we're not typing in an input/textarea
+      if (
+        document.activeElement?.tagName === "INPUT" || 
+        document.activeElement?.tagName === "TEXTAREA"
+      ) return;
+
+      if (!videoRef.current) return;
+
+      if (e.key === "ArrowRight") {
+        e.preventDefault();
+        videoRef.current.currentTime = Math.min(videoRef.current.duration, videoRef.current.currentTime + 10);
+        handleMouseMove(); // show controls
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 10);
+        handleMouseMove(); // show controls
+      } else if (e.key === " ") {
+        e.preventDefault();
+        togglePlay();
+        handleMouseMove();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isPlaying, duration]);
+
+  useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
     };

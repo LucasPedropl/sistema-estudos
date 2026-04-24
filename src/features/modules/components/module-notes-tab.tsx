@@ -7,6 +7,7 @@ import { addNoteToModule, getNotesForModule, updateNote, deleteNote, NoteData } 
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
+import { cn } from "@/src/lib/utils";
 
 export default function ModuleNotesTab({ moduleId }: { moduleId: string }) {
   const [notes, setNotes] = useState<NoteData[]>([]);
@@ -17,10 +18,18 @@ export default function ModuleNotesTab({ moduleId }: { moduleId: string }) {
   const [editContent, setEditContent] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [viewMode, setViewMode] = useState(false);
+  
+  const [contextMenu, setContextMenu] = useState<{ x: number, y: number, type: "add" | "remove", text: string } | null>(null);
 
   useEffect(() => {
     loadNotes();
   }, [moduleId]);
+  
+  useEffect(() => {
+    function handleClick() { setContextMenu(null); }
+    window.addEventListener("click", handleClick);
+    return () => window.removeEventListener("click", handleClick);
+  }, []);
 
   async function loadNotes() {
     const loaded = await getNotesForModule(moduleId);
@@ -61,20 +70,15 @@ export default function ModuleNotesTab({ moduleId }: { moduleId: string }) {
   async function handleSaveNote() {
     if (!selectedNote || !selectedNote.id) return;
     setIsSaving(true);
-    // Actually the update logic below isn't accepting bookmark yet, so let's stick to title and content
-    // But since NoteData has isBookmarked, we can include it in updateDoc directly here or in service.
-    // Assuming the service takes the entire object or we wait. Our service `updateNote(id, title, content)`
-    // is fixed. Let's just update using existing service. If we needed to update Bookmark, we should update the service.
     await updateNote(selectedNote.id, editTitle, editContent);
     await loadNotes();
     setIsSaving(false);
   }
 
   async function handleDeleteNote(id: string) {
-    if (confirm("Quer mesmo deletar esta anotação permanentemente?")) {
-      await deleteNote(id);
-      loadNotes();
-    }
+    // Removed window.confirm
+    await deleteNote(id);
+    loadNotes();
   }
 
   function insertMarkdown(prefix: string, suffix: string) {
@@ -91,6 +95,42 @@ export default function ModuleNotesTab({ moduleId }: { moduleId: string }) {
        textarea.focus();
        textarea.setSelectionRange(start + prefix.length, end + prefix.length);
     }, 0);
+  }
+
+  function handleContextMenu(e: React.MouseEvent) {
+    if (!viewMode) return; // Ignore if in edit mode
+    
+    const target = e.target as HTMLElement;
+    if (target.tagName.toLowerCase() === 'mark') {
+       e.preventDefault();
+       setContextMenu({ x: e.clientX, y: e.clientY, type: "remove", text: target.innerText });
+       return;
+    }
+
+    const selection = window.getSelection()?.toString();
+    if (selection && selection.trim().length > 0) {
+       e.preventDefault();
+       setContextMenu({ x: e.clientX, y: e.clientY, type: "add", text: selection });
+    } else {
+       setContextMenu(null);
+    }
+  }
+
+  async function handleHighlightAction() {
+    if (!contextMenu || !selectedNote?.id) return;
+    
+    let newContent = editContent;
+    if (contextMenu.type === "add") {
+       newContent = editContent.replace(contextMenu.text, `==${contextMenu.text}==`);
+    } else if (contextMenu.type === "remove") {
+       newContent = editContent.replace(`==${contextMenu.text}==`, contextMenu.text);
+    }
+    
+    setEditContent(newContent);
+    await updateNote(selectedNote.id, editTitle, newContent);
+    
+    setContextMenu(null);
+    window.getSelection()?.removeAllRanges();
   }
 
   return (
@@ -199,13 +239,13 @@ export default function ModuleNotesTab({ moduleId }: { moduleId: string }) {
 
              <div className="flex-1 p-6 relative overflow-hidden flex flex-col bg-slate-50/50 dark:bg-zinc-950/50">
                 {viewMode ? (
-                   <div className="flex-1 overflow-y-auto">
+                   <div className="flex-1 overflow-y-auto" onContextMenu={handleContextMenu}>
                      <article className="prose prose-slate dark:prose-invert max-w-none">
                        <ReactMarkdown
                          remarkPlugins={[remarkGfm]}
                          rehypePlugins={[rehypeRaw]}
                        >
-                         {editContent ? editContent.replace(/==([^=]+)==/g, '<mark class="bg-yellow-200 dark:bg-yellow-500/30 text-inherit px-1 rounded">$1</mark>') : "*Nota vazia...*"}
+                         {editContent ? editContent.replace(/==([^=]+)==/g, '<mark class="bg-yellow-200 dark:bg-yellow-500/30 text-inherit px-1 rounded cursor-pointer selection:bg-transparent" title="Clique com o botão direito para remover o marcador">$1</mark>') : "*Nota vazia...*"}
                        </ReactMarkdown>
                      </article>
                    </div>
@@ -222,6 +262,34 @@ export default function ModuleNotesTab({ moduleId }: { moduleId: string }) {
            </>
         )}
       </div>
+      
+      {contextMenu && (
+        <div 
+          className="fixed z-50 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl shadow-xl w-48 flex flex-col p-1 animate-fade-in-up"
+          style={{ 
+            top: Math.min(contextMenu.y, typeof window !== 'undefined' ? window.innerHeight - 100 : contextMenu.y), 
+            left: Math.min(contextMenu.x, typeof window !== 'undefined' ? window.innerWidth - 200 : contextMenu.x) 
+          }}
+          onClick={e => e.stopPropagation()}
+          onContextMenu={e => e.preventDefault()}
+        >
+          <div className="px-3 py-2 border-b border-slate-100 dark:border-zinc-800 mb-1 flex justify-between items-center bg-slate-50 dark:bg-zinc-950/50 rounded-t-lg">
+             <span className="text-xs font-semibold text-slate-800 dark:text-zinc-200 truncate">Marcador</span>
+          </div>
+          <button 
+            className={cn(
+               "flex items-center gap-2 w-full px-3 py-2 text-sm text-left rounded-md transition-colors",
+               contextMenu.type === 'add' 
+                  ? "text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800" 
+                  : "text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30"
+            )}
+            onClick={handleHighlightAction}
+          >
+            <Highlighter className="w-4 h-4" /> 
+            {contextMenu.type === 'add' ? "Destacar Seleção" : "Remover Marcação"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

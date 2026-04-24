@@ -6,11 +6,11 @@ import Link from "next/link";
 import { BookOpen } from "lucide-react";
 import { ThemeToggle } from "@/src/components/theme-toggle";
 
-export function MobileNav() {
+export function MobileNav({ onOpenSidebar }: { onOpenSidebar: () => void }) {
   return (
     <header className="flex h-16 shrink-0 items-center justify-between gap-x-4 border-b border-slate-200 dark:border-zinc-800 bg-white dark:bg-black px-4 shadow-sm sm:gap-x-6 sm:px-6 md:hidden">
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" className="-ml-2">
+        <Button variant="ghost" size="icon" className="-ml-2" onClick={onOpenSidebar}>
           <Menu className="h-5 w-5 text-slate-600 dark:text-zinc-400" />
         </Button>
 

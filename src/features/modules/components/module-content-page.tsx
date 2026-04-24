@@ -36,10 +36,18 @@ export default function ModuleContentPage({ moduleId, pageId }: { moduleId: stri
   const [editTitle, setEditTitle] = useState("");
   const [editContent, setEditContent] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  
+  const [contextMenu, setContextMenu] = useState<{ x: number, y: number, type: "add" | "remove", text: string } | null>(null);
 
   useEffect(() => {
     loadPage();
   }, [moduleId, pageId]);
+  
+  useEffect(() => {
+    function handleClick() { setContextMenu(null); }
+    window.addEventListener("click", handleClick);
+    return () => window.removeEventListener("click", handleClick);
+  }, []);
 
   async function loadPage() {
     const list = await getContentPagesForModule(moduleId);
@@ -99,6 +107,46 @@ export default function ModuleContentPage({ moduleId, pageId }: { moduleId: stri
     }, 0);
   }
 
+  function handleContextMenu(e: React.MouseEvent) {
+    if (isEditing) return; // Do not intercept if in edit mode
+    
+    const target = e.target as HTMLElement;
+    if (target.tagName.toLowerCase() === 'mark') {
+       e.preventDefault();
+       setContextMenu({ x: e.clientX, y: e.clientY, type: "remove", text: target.innerText });
+       return;
+    }
+
+    const selection = window.getSelection()?.toString();
+    if (selection && selection.trim().length > 0) {
+       e.preventDefault();
+       setContextMenu({ x: e.clientX, y: e.clientY, type: "add", text: selection });
+    } else {
+       setContextMenu(null);
+    }
+  }
+
+  async function handleHighlightAction() {
+    if (!contextMenu || !page?.id) return;
+    
+    let newContent = editContent;
+    if (contextMenu.type === "add") {
+       // Escape special regex chars from selection just in case, but simple string replace works for the first match
+       newContent = editContent.replace(contextMenu.text, `==${contextMenu.text}==`);
+    } else if (contextMenu.type === "remove") {
+       newContent = editContent.replace(`==${contextMenu.text}==`, contextMenu.text);
+    }
+    
+    setEditContent(newContent);
+    setPage(p => p ? { ...p, content: newContent } : null);
+    
+    // Save to DB silently
+    await updateContentPage(page.id, editTitle, newContent, page.isBookmarked, page.icon);
+    
+    setContextMenu(null);
+    window.getSelection()?.removeAllRanges();
+  }
+
   // Next and Prev Page Logic
   const currentIndex = pages.findIndex(p => p.id === pageId);
   const prevPage = currentIndex > 0 ? pages[currentIndex - 1] : null;
@@ -106,12 +154,11 @@ export default function ModuleContentPage({ moduleId, pageId }: { moduleId: stri
 
   if (!page) return <div className="p-8 text-center text-slate-500">Carregando...</div>;
 
-  const renderedContent = page.content.replace(/==([^=]+)==/g, '<mark>$1</mark>');
-
   return (
-    <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-sm min-h-[calc(100vh-8rem)] flex flex-col overflow-hidden relative">
-      
-      {/* Action Header */}
+    <>
+      <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-sm min-h-[calc(100vh-8rem)] flex flex-col overflow-hidden relative">
+        
+        {/* Action Header */}
       <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0 bg-slate-50 dark:bg-zinc-950/30">
          <div className="flex items-center gap-3">
              <Button 
@@ -197,7 +244,7 @@ export default function ModuleContentPage({ moduleId, pageId }: { moduleId: stri
             className="flex-1 w-full bg-slate-50/50 dark:bg-zinc-950/50 p-6 sm:p-8 resize-none outline-none text-slate-700 dark:text-zinc-300 font-mono text-sm leading-relaxed"
           />
         ) : (
-          <div className="flex-1 overflow-y-auto w-full">
+          <div className="flex-1 overflow-y-auto w-full" onContextMenu={handleContextMenu}>
              <div className="max-w-3xl mx-auto w-full p-6 sm:p-10 lg:p-12 min-h-[50vh]">
                {page.content ? (
                  <article className="prose prose-slate dark:prose-invert prose-headings:font-display prose-a:text-blue-600 dark:prose-a:text-blue-400 max-w-none">
@@ -205,7 +252,7 @@ export default function ModuleContentPage({ moduleId, pageId }: { moduleId: stri
                      remarkPlugins={[remarkGfm]}
                      rehypePlugins={[rehypeRaw]}
                    >
-                     {page.content ? page.content.replace(/==([^=]+)==/g, '<mark class="bg-yellow-200 dark:bg-yellow-500/30 text-inherit px-1 rounded">$1</mark>') : ""}
+                     {page.content ? page.content.replace(/==([^=]+)==/g, '<mark class="bg-yellow-200 dark:bg-yellow-500/30 text-inherit px-1 rounded cursor-pointer selection:bg-transparent" title="Clique com o botão direito para remover o marcador">$1</mark>') : ""}
                    </ReactMarkdown>
                  </article>
                ) : (
@@ -249,5 +296,34 @@ export default function ModuleContentPage({ moduleId, pageId }: { moduleId: stri
         )}
       </div>
     </div>
+    
+    {contextMenu && (
+      <div 
+        className="fixed z-50 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl shadow-xl w-48 flex flex-col p-1 animate-fade-in-up"
+        style={{ 
+          top: Math.min(contextMenu.y, typeof window !== 'undefined' ? window.innerHeight - 100 : contextMenu.y), 
+          left: Math.min(contextMenu.x, typeof window !== 'undefined' ? window.innerWidth - 200 : contextMenu.x) 
+        }}
+        onClick={e => e.stopPropagation()}
+        onContextMenu={e => e.preventDefault()}
+      >
+        <div className="px-3 py-2 border-b border-slate-100 dark:border-zinc-800 mb-1 flex justify-between items-center bg-slate-50 dark:bg-zinc-950/50 rounded-t-lg">
+           <span className="text-xs font-semibold text-slate-800 dark:text-zinc-200 truncate">Marcador</span>
+        </div>
+        <button 
+          className={cn(
+             "flex items-center gap-2 w-full px-3 py-2 text-sm text-left rounded-md transition-colors",
+             contextMenu.type === 'add' 
+                ? "text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800" 
+                : "text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30"
+          )}
+          onClick={handleHighlightAction}
+        >
+          <Highlighter className="w-4 h-4" /> 
+          {contextMenu.type === 'add' ? "Destacar Seleção" : "Remover Marcação"}
+        </button>
+      </div>
+    )}
+    </>
   );
 }

@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { Button } from "@/src/components/ui/button";
-import { Plus, BrainCircuit, Trash2, Edit3, Save, CheckCircle, XCircle, Code, Play, Flag } from "lucide-react";
+import { Plus, BrainCircuit, Trash2, Save, CheckCircle, XCircle, Code, Play, Flag, Edit2 } from "lucide-react";
 import { cn } from "@/src/lib/utils";
 import { getQuizzesForModule, createQuiz, updateQuiz, deleteQuiz, QuizData } from "@/src/features/modules/services/module.service";
 
@@ -43,10 +43,21 @@ export default function ModuleQuizzesTab({ moduleId }: { moduleId: string }) {
   // Flagging / Bookmarking Logic
   const [flaggedIndexes, setFlaggedIndexes] = useState<Set<number>>(new Set());
   const [reviewMode, setReviewMode] = useState(false);
+  
+  // Editable Sidebar rename
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const renameInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadQuizzes();
   }, [moduleId]);
+
+  useEffect(() => {
+    if (renamingId && renameInputRef.current) {
+        renameInputRef.current.focus();
+        renameInputRef.current.select();
+    }
+  }, [renamingId]);
 
   async function loadQuizzes() {
     const loaded = await getQuizzesForModule(moduleId);
@@ -62,6 +73,7 @@ export default function ModuleQuizzesTab({ moduleId }: { moduleId: string }) {
   }
 
   function handleSelect(quiz: QuizData) {
+    if (renamingId) return; // Prevent selection change while renaming
     setSelectedQuiz(quiz);
     setEditTitle(quiz.title);
     setEditJson(quiz.questionsJson);
@@ -109,20 +121,31 @@ export default function ModuleQuizzesTab({ moduleId }: { moduleId: string }) {
     }
     
     setIsSaving(true);
-    await updateQuiz(selectedQuiz.id, editTitle, editJson);
+    await updateQuiz(selectedQuiz.id, editTitle.trim() || selectedQuiz.title, editJson);
     await loadQuizzes();
     setIsSaving(false);
     resetPlayer(editJson);
   }
 
-  async function handleDeleteQuiz(id: string) {
-    if (confirm("Quer mesmo deletar este quiz permanentemente?")) {
-       await deleteQuiz(id);
+  async function handleRenameSidebar(id: string, newTitle: string) {
+    const q = quizzes.find(x => x.id === id);
+    if (q && newTitle.trim()) {
+       await updateQuiz(id, newTitle.trim(), q.questionsJson);
        if (selectedQuiz?.id === id) {
-         setSelectedQuiz(null);
+          setEditTitle(newTitle.trim());
        }
-       loadQuizzes();
+       await loadQuizzes();
     }
+    setRenamingId(null);
+  }
+
+  async function handleDeleteQuiz(id: string) {
+    // Removed window.confirm for iframe compatibility
+    await deleteQuiz(id);
+    if (selectedQuiz?.id === id) {
+        setSelectedQuiz(null);
+    }
+    loadQuizzes();
   }
 
   function handleToggleFlag() {
@@ -142,19 +165,31 @@ export default function ModuleQuizzesTab({ moduleId }: { moduleId: string }) {
     }
   }
 
-  function handleNextQuestion() {
+  async function handleNextQuestion() {
     if (currentQIndex < parsedQuestions.length - 1) {
       setCurrentQIndex(currentQIndex + 1);
       setSelectedOption(null);
     } else {
       setIsFinished(true);
+      // Auto-create review quiz when finished if there are flagged items
+      if (flaggedIndexes.size > 0 && selectedQuiz) {
+         try {
+           const flaggedQ = Array.from(flaggedIndexes).map(i => parsedQuestions[i]);
+           const reviewTitle = `Revisão - ${selectedQuiz.title}`;
+           const reviewJson = JSON.stringify(flaggedQ, null, 2);
+           await createQuiz(moduleId, reviewTitle, reviewJson);
+           await loadQuizzes();
+         } catch(e) {
+           console.error("Error generating review quiz", e);
+         }
+      }
     }
   }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
       {/* Sidebar List */}
-      <div className="lg:col-span-1 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-sm flex flex-col h-[calc(100vh-14rem)]">
+      <div className="lg:col-span-1 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-sm flex flex-col h-[400px] lg:h-[calc(100vh-14rem)]">
         <div className="p-4 border-b border-slate-200 dark:border-zinc-800 flex items-center justify-between">
            <span className="font-semibold text-slate-900 dark:text-zinc-50 text-sm">Meus Quizzes</span>
            <Button size="icon" variant="ghost" onClick={handleCreateQuiz} className="h-8 w-8 text-blue-600 dark:text-blue-400">
@@ -165,21 +200,48 @@ export default function ModuleQuizzesTab({ moduleId }: { moduleId: string }) {
           {quizzes.length === 0 && <p className="text-xs text-center text-slate-500 mt-4">Nenhum quiz.</p>}
           {quizzes.map((quiz) => {
              const isSelected = selectedQuiz?.id === quiz.id;
+             const isRenaming = renamingId === quiz.id;
+             
              return (
                <div 
                  key={quiz.id} 
-                 className={`group flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors ${isSelected ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-transparent hover:bg-slate-50 dark:hover:bg-zinc-800/50'}`}
+                 className={cn(
+                    "group flex items-center p-3 rounded-lg border transition-colors cursor-pointer",
+                    isSelected ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-transparent hover:bg-slate-50 dark:hover:bg-zinc-800/50'
+                 )}
                  onClick={() => handleSelect(quiz)}
                >
-                 <div className="flex items-center gap-3 overflow-hidden">
+                 <div className="flex items-center gap-3 w-full overflow-hidden">
                    <BrainCircuit className={cn("w-4 h-4 shrink-0", isSelected ? "text-blue-500" : "text-slate-400")} />
-                   <span className={`text-sm font-medium truncate ${isSelected ? 'text-blue-700 dark:text-blue-400' : 'text-slate-700 dark:text-zinc-300'}`}>
-                     {quiz.title}
-                   </span>
+                   
+                   {isRenaming ? (
+                      <input 
+                         ref={renameInputRef}
+                         defaultValue={quiz.title}
+                         onBlur={(e) => handleRenameSidebar(quiz.id!, e.target.value)}
+                         onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleRenameSidebar(quiz.id!, e.currentTarget.value);
+                            if (e.key === 'Escape') setRenamingId(null);
+                         }}
+                         className="flex-1 min-w-0 bg-white dark:bg-black border border-blue-500 rounded px-1 -ml-1 text-sm outline-none text-slate-900 dark:text-zinc-50"
+                      />
+                   ) : (
+                      <span className={cn("text-sm font-medium truncate flex-1", isSelected ? 'text-blue-700 dark:text-blue-400' : 'text-slate-700 dark:text-zinc-300')}>
+                        {quiz.title}
+                      </span>
+                   )}
+                   
+                   {!isRenaming && (
+                       <div className="flex items-center shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                         <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-blue-500" onClick={(e) => { e.stopPropagation(); setRenamingId(quiz.id!); }}>
+                           <Edit2 className="w-3.5 h-3.5" />
+                         </Button>
+                         <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-red-500" onClick={(e) => { e.stopPropagation(); quiz.id && handleDeleteQuiz(quiz.id); }}>
+                           <Trash2 className="w-3.5 h-3.5" />
+                         </Button>
+                       </div>
+                   )}
                  </div>
-                 <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); quiz.id && handleDeleteQuiz(quiz.id); }}>
-                   <Trash2 className="w-4 h-4" />
-                 </Button>
                </div>
              )
           })}
@@ -187,11 +249,11 @@ export default function ModuleQuizzesTab({ moduleId }: { moduleId: string }) {
       </div>
 
       {/* Main Area */}
-      <div className="lg:col-span-3 flex flex-col h-[calc(100vh-14rem)] bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden">
+      <div className="lg:col-span-3 flex flex-col min-h-[500px] lg:h-[calc(100vh-14rem)] bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden">
         {!selectedQuiz ? (
-           <div className="flex-1 flex flex-col items-center justify-center text-slate-500 gap-2">
+           <div className="flex-1 flex flex-col items-center justify-center text-slate-500 gap-2 p-6 text-center">
               <BrainCircuit className="w-12 h-12 opacity-50 mb-2 text-blue-500" />
-              <p>Nenhum Quiz selecionado.</p>
+              <p>Nenhum Quiz selecionado. Escolha na barra lateral ou crie um novo.</p>
               <Button onClick={handleCreateQuiz} className="mt-2 text-white bg-blue-600 hover:bg-blue-700">
                  Criar Quiz
               </Button>
@@ -199,21 +261,21 @@ export default function ModuleQuizzesTab({ moduleId }: { moduleId: string }) {
         ) : (
            <>
              {/* Header */}
-             <div className="p-4 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between gap-4">
+             <div className="p-4 border-b border-slate-100 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
                 <input 
                   value={editTitle}
                   onChange={e => setEditTitle(e.target.value)}
-                  className="flex-1 font-display text-2xl font-bold bg-transparent outline-none text-slate-900 dark:text-zinc-50 border-none placeholder:text-slate-300 dark:placeholder:text-zinc-700"
+                  onBlur={handleSaveQuiz}
+                  className="flex-1 font-display text-2xl font-bold bg-transparent outline-none text-slate-900 dark:text-zinc-50 border-none placeholder:text-slate-300 dark:placeholder:text-zinc-700 truncate"
                   placeholder="Nome do Quiz"
-                  disabled={mode === "play"}
                 />
                 
-                <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-lg shrink-0">
+                <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-lg shrink-0 w-full sm:w-auto justify-center">
                   <Button 
                     variant="ghost" 
                     size="sm" 
                     onClick={() => { setMode("play"); resetPlayer(editJson); }}
-                    className={cn("text-xs gap-2", mode === "play" && "bg-white dark:bg-zinc-700 shadow-sm text-blue-600 dark:text-blue-400")}
+                    className={cn("text-xs gap-2 flex-1 sm:flex-none", mode === "play" && "bg-white dark:bg-zinc-700 shadow-sm text-blue-600 dark:text-blue-400")}
                   >
                     <Play className="w-3.5 h-3.5" /> Jogar
                   </Button>
@@ -221,7 +283,7 @@ export default function ModuleQuizzesTab({ moduleId }: { moduleId: string }) {
                     variant="ghost" 
                     size="sm" 
                     onClick={() => setMode("edit")}
-                    className={cn("text-xs gap-2", mode === "edit" && "bg-white dark:bg-zinc-700 shadow-sm text-blue-600 dark:text-blue-400")}
+                    className={cn("text-xs gap-2 flex-1 sm:flex-none", mode === "edit" && "bg-white dark:bg-zinc-700 shadow-sm text-blue-600 dark:text-blue-400")}
                   >
                     <Code className="w-3.5 h-3.5" /> Editar JSON
                   </Button>
@@ -229,11 +291,11 @@ export default function ModuleQuizzesTab({ moduleId }: { moduleId: string }) {
              </div>
              
              {/* Body */}
-             <div className="flex-1 overflow-hidden relative">
+             <div className="flex-1 overflow-hidden relative flex flex-col min-h-0">
                {mode === "edit" ? (
-                 <div className="h-full flex flex-col sm:flex-row">
-                    <div className="flex-1 p-4 flex flex-col gap-2">
-                       <div className="flex items-center justify-between">
+                 <div className="h-full flex flex-col md:flex-row flex-1 min-h-0">
+                    <div className="flex-1 p-4 flex flex-col gap-2 min-h-0">
+                       <div className="flex items-center justify-between shrink-0">
                          <label className="text-sm font-semibold text-slate-700 dark:text-zinc-300">
                            Banco de Perguntas (JSON Array)
                          </label>
@@ -248,68 +310,69 @@ export default function ModuleQuizzesTab({ moduleId }: { moduleId: string }) {
                          spellCheck={false}
                        />
                     </div>
-                    <div className="w-full sm:w-80 bg-slate-50 dark:bg-zinc-950/50 p-6 border-l border-slate-200 dark:border-zinc-800 overflow-y-auto hidden md:block">
+                    <div className="w-full md:w-80 bg-slate-50 dark:bg-zinc-950/50 p-6 border-t md:border-t-0 md:border-l border-slate-200 dark:border-zinc-800 overflow-y-auto shrink-0 md:block">
                        <h3 className="font-semibold text-slate-900 dark:text-zinc-50 mb-2">Formato Exigido</h3>
                        <p className="text-sm text-slate-500 mb-4 leading-relaxed">
                          Para criar novas perguntas ou alterar este quiz, forneça um Array de Objetos JSON exato contendo: <code className="bg-slate-200 dark:bg-zinc-800 px-1 rounded">question</code>, <code className="bg-slate-200 dark:bg-zinc-800 px-1 rounded">options</code> (Array), <code className="bg-slate-200 dark:bg-zinc-800 px-1 rounded">correctIndex</code> (posição começa no 0), e <code className="bg-slate-200 dark:bg-zinc-800 px-1 rounded">explanation</code> (opcional).
                        </p>
-                       <pre className="text-xs bg-slate-900 !text-green-400 p-4 rounded-xl overflow-x-auto">
+                       <pre className="text-xs bg-slate-900 !text-green-400 p-4 rounded-xl overflow-x-auto whitespace-pre-wrap word-break">
 {`[
   {
-    "question": "Pergunta 1",
+    "question": "Pergunta 1?",
     "options": [
       "Opção A",
-      "Opção B",
-      "Opção C"
+      "Opção B"
     ],
-    "correctIndex": 1,
-    "explanation": "Pois a opção B é..."
+    "correctIndex": 1
   }
 ]`}
                        </pre>
                     </div>
                  </div>
                ) : (
-                 <div className="h-full flex flex-col p-6 overflow-y-auto bg-slate-50/50 dark:bg-zinc-950/50">
+                 <div className="h-full flex flex-col p-4 sm:p-6 overflow-y-auto bg-slate-50/50 dark:bg-zinc-950/50 min-h-0 custom-scrollbar">
                     {parsedQuestions.length === 0 ? (
-                      <div className="flex-1 flex flex-col items-center justify-center text-slate-500">
+                      <div className="flex-1 flex flex-col items-center justify-center text-slate-500 min-h-[300px]">
                          <BrainCircuit className="w-12 h-12 opacity-50 mb-4" />
                          <p>Nenhuma pergunta válida encontrada no JSON.</p>
                       </div>
                     ) : reviewMode ? (
-                      <div className="max-w-3xl w-full mx-auto flex flex-col py-8 animate-fade-in-up">
-                         <div className="flex items-center justify-between mb-8">
-                             <h2 className="text-2xl font-bold text-slate-900 dark:text-zinc-50">Sua Revisão de Perguntas</h2>
-                             <Button onClick={() => setReviewMode(false)} variant="outline">Voltar ao Resultado</Button>
+                      <div className="max-w-3xl w-full mx-auto flex flex-col py-4 sm:py-8 animate-fade-in-up">
+                         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
+                             <h2 className="text-2xl font-bold text-slate-900 dark:text-zinc-50">Avaliação de Destaques</h2>
+                             <Button onClick={() => setReviewMode(false)} variant="outline" className="w-full sm:w-auto">Voltar ao Resultado</Button>
                          </div>
                          <div className="space-y-6">
                             {Array.from(flaggedIndexes).map(index => {
                                const q = parsedQuestions[index];
                                if (!q) return null;
                                return (
-                                 <div key={index} className="bg-white dark:bg-zinc-900 border-2 border-yellow-300 dark:border-yellow-600/50 rounded-xl p-6">
+                                 <div key={index} className="bg-white dark:bg-zinc-900 border-2 border-yellow-300 dark:border-yellow-600/50 rounded-xl p-4 sm:p-6 shadow-sm">
                                     <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-500 mb-3">
                                        <Flag className="w-4 h-4 fill-current" />
                                        <span className="text-sm font-semibold uppercase tracking-wider">Pergunta {index + 1}</span>
                                     </div>
-                                    <h3 className="text-xl font-bold text-slate-900 dark:text-zinc-50 mb-4">{q.question}</h3>
+                                    <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-zinc-50 mb-4 break-words">{q.question}</h3>
                                     <div className="bg-slate-50 dark:bg-zinc-950 p-4 rounded-lg mb-4 border border-slate-200 dark:border-zinc-800">
                                        <span className="text-sm font-semibold text-slate-500 block mb-1">Resposta Correta:</span>
-                                       <p className="text-green-700 dark:text-green-400 font-medium">{q.options[q.correctIndex]}</p>
+                                       <p className="text-green-700 dark:text-green-400 font-medium break-words">{q.options[q.correctIndex]}</p>
                                     </div>
                                     {q.explanation && (
                                        <div className="bg-blue-50 dark:bg-blue-950/30 p-4 rounded-lg text-blue-800 dark:text-blue-300">
                                           <span className="text-sm font-semibold block mb-1">Explicação:</span>
-                                          <p className="text-sm">{q.explanation}</p>
+                                          <p className="text-sm break-words">{q.explanation}</p>
                                        </div>
                                     )}
                                  </div>
                                );
                             })}
+                            {flaggedIndexes.size === 0 && (
+                               <p className="text-slate-500 text-center py-10">Nenhuma pergunta destacada para revisão.</p>
+                            )}
                          </div>
                       </div>
                     ) : isFinished ? (
-                      <div className="flex-1 flex flex-col items-center justify-center text-center animate-fade-in-up">
+                      <div className="flex-1 flex flex-col items-center justify-center text-center animate-fade-in-up min-h-[300px]">
                          <div className="w-24 h-24 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-6">
                            <span className="text-4xl font-display font-bold text-blue-600 dark:text-blue-400">
                              {score}/{parsedQuestions.length}
@@ -317,41 +380,66 @@ export default function ModuleQuizzesTab({ moduleId }: { moduleId: string }) {
                          </div>
                          <h2 className="text-2xl font-bold text-slate-900 dark:text-zinc-50 mb-2">Quiz Concluído!</h2>
                          <p className="text-slate-500 mb-8 max-w-sm">Você finalizou com sucesso as perguntas deste banco.</p>
-                         <div className="flex flex-col sm:flex-row gap-3">
-                           <Button onClick={() => resetPlayer(editJson)} size="lg" className="w-full sm:w-auto">
+                         
+                         {flaggedIndexes.size > 0 && (
+                             <div className="mb-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl text-yellow-800 dark:text-yellow-500 max-w-md">
+                               <p className="text-sm font-medium">
+                                  Um novo quiz contendo apenas as <strong>{flaggedIndexes.size}</strong> perguntas destacadas foi gerado automaticamente e adicionado à sua barra lateral para revisão futura!
+                               </p>
+                             </div>
+                         )}
+
+                         <div className="flex flex-col sm:flex-row gap-3 w-full max-w-md">
+                           <Button onClick={() => resetPlayer(editJson)} size="lg" className="w-full sm:flex-1">
                              Jogar Novamente
                            </Button>
                            {flaggedIndexes.size > 0 && (
-                             <Button onClick={() => setReviewMode(true)} variant="outline" size="lg" className="w-full sm:w-auto gap-2 border-yellow-300 text-yellow-700 dark:border-yellow-700 dark:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-950/30">
-                               <Flag className="w-4 h-4 fill-current" /> Revisar Destaques ({flaggedIndexes.size})
+                             <Button onClick={() => setReviewMode(true)} variant="outline" size="lg" className="w-full sm:flex-1 gap-2 border-yellow-300 text-yellow-700 dark:border-yellow-700 dark:text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-950/30">
+                               <Flag className="w-4 h-4 fill-current shrink-0" /> Ver Destaques
                              </Button>
                            )}
                          </div>
                       </div>
                     ) : (
-                      <div className="max-w-3xl w-full mx-auto flex flex-col py-8 animate-fade-in-up">
-                         <div className="flex justify-between items-center mb-8">
-                            <span className="text-sm font-semibold tracking-wider text-slate-500 uppercase">
-                              Progresso
-                            </span>
-                            <div className="flex items-center gap-4">
+                      <div className="max-w-3xl w-full mx-auto flex flex-col py-2 sm:py-8 animate-fade-in-up">
+                         <div className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center mb-6 sm:mb-8 gap-4">
+                            <div className="flex-1 w-full sm:w-auto">
+                               <div className="flex justify-between items-center mb-1.5">
+                                 <span className="text-[10px] sm:text-xs font-bold tracking-wider text-slate-400 dark:text-zinc-500 uppercase">
+                                    Progresso do Quiz
+                                 </span>
+                                 <span className="text-xs font-bold text-blue-600 dark:text-blue-400">
+                                   {Math.round(((currentQIndex) / parsedQuestions.length) * 100)}%
+                                 </span>
+                               </div>
+                               <div className="w-full h-1.5 bg-slate-200 dark:bg-zinc-800 rounded-full overflow-hidden">
+                                  <div 
+                                    className="h-full bg-blue-500 transition-all duration-500 ease-out"
+                                    style={{ width: `${((currentQIndex) / parsedQuestions.length) * 100}%` }}
+                                  />
+                               </div>
+                            </div>
+                            <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto justify-between sm:justify-end">
                                <Button 
                                  variant="outline" 
                                  size="sm" 
-                                 className={cn("gap-2 border-slate-200 dark:border-zinc-700", flaggedIndexes.has(currentQIndex) && "bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-500 border-yellow-300 dark:border-yellow-700")}
+                                 className={cn("h-8 gap-2 border-slate-200 dark:border-zinc-700 text-xs", flaggedIndexes.has(currentQIndex) && "bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-500 border-yellow-300 dark:border-yellow-700")}
                                  onClick={handleToggleFlag}
                                >
-                                  <Flag className={cn("w-3.5 h-3.5", flaggedIndexes.has(currentQIndex) && "fill-current")} /> Destacar para Revisão
+                                  <Flag className={cn("w-3 h-3 shrink-0", flaggedIndexes.has(currentQIndex) && "fill-current")} /> 
+                                  <span className="hidden xs:inline">Destacar</span>
                                </Button>
-                               <span className="text-sm font-medium text-slate-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 px-3 py-1 rounded-full border border-slate-200 dark:border-zinc-700 shadow-sm">
-                                 Pergunta {currentQIndex + 1} de {parsedQuestions.length}
+                               <span className="text-xs font-bold text-slate-600 dark:text-zinc-400 bg-slate-100 dark:bg-zinc-800 px-3 py-1 rounded-full border border-slate-200 dark:border-zinc-700 shrink-0">
+                                 {currentQIndex + 1} / {parsedQuestions.length}
                                </span>
                             </div>
                          </div>
                          
-                         <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-zinc-50 mb-10 leading-tight">
-                           {parsedQuestions[currentQIndex]?.question}
-                         </h2>
+                         <div className="mb-8">
+                            <h2 className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-zinc-50 leading-tight break-words">
+                              {parsedQuestions[currentQIndex]?.question}
+                            </h2>
+                         </div>
                          
                          <div className="flex flex-col gap-3">
                            {parsedQuestions[currentQIndex]?.options.map((opt, i) => {
@@ -373,11 +461,11 @@ export default function ModuleQuizzesTab({ moduleId }: { moduleId: string }) {
                                  disabled={showResult}
                                  onClick={() => handleAnswer(i)}
                                  className={cn(
-                                   "text-left p-4 sm:p-5 rounded-2xl border-2 transition-all font-medium flex items-center justify-between",
+                                   "text-left p-3 sm:p-4 md:p-5 rounded-2xl border-2 transition-all font-medium flex items-center justify-between gap-4",
                                    buttonClass
                                  )}
                                >
-                                 <span className="text-base sm:text-lg">{opt}</span>
+                                 <span className="text-sm sm:text-base md:text-lg break-words w-full">{opt}</span>
                                  {showResult && isCorrect && <CheckCircle className="w-5 h-5 text-green-500 shrink-0" />}
                                  {showResult && isSelected && !isCorrect && <XCircle className="w-5 h-5 text-red-500 shrink-0" />}
                                </button>
@@ -386,16 +474,16 @@ export default function ModuleQuizzesTab({ moduleId }: { moduleId: string }) {
                          </div>
                          
                          {selectedOption !== null && (
-                           <div className="mt-8 animate-fade-in-up">
+                           <div className="mt-6 sm:mt-8 animate-fade-in-up">
                              {parsedQuestions[currentQIndex].explanation && (
                                 <div className="p-4 bg-slate-100 dark:bg-zinc-800/50 rounded-xl mb-6 border border-slate-200 dark:border-zinc-800">
                                    <span className="font-semibold text-sm text-slate-700 dark:text-zinc-300 block mb-1">Explicação:</span>
-                                   <p className="text-slate-600 dark:text-zinc-400 text-sm">
+                                   <p className="text-slate-600 dark:text-zinc-400 text-sm break-words">
                                      {parsedQuestions[currentQIndex].explanation}
                                    </p>
                                 </div>
                              )}
-                             <Button onClick={handleNextQuestion} size="lg" className="w-full text-base">
+                             <Button onClick={handleNextQuestion} size="lg" className="w-full text-base py-6">
                                {currentQIndex < parsedQuestions.length - 1 ? "Próxima Pergunta" : "Ver Resultados"}
                              </Button>
                            </div>
