@@ -68,7 +68,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <div className="flex-1 flex flex-col md:pl-64 min-h-screen w-full">
         <MobileNav onOpenSidebar={() => setIsMobileMenuOpen(true)} />
-        <main className="flex-1 w-full max-w-7xl mx-auto p-4 sm:p-6 md:p-8">
+        <main className="flex-1 w-full max-w-[1600px] mx-auto p-4 sm:p-6 md:p-8">
           {children}
         </main>
       </div>

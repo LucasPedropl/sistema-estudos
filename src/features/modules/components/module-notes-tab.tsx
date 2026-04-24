@@ -134,37 +134,50 @@ export default function ModuleNotesTab({ moduleId }: { moduleId: string }) {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-       {/* Notes List Sidebar */}
-       <div className="lg:col-span-1 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-sm flex flex-col h-[calc(100vh-14rem)]">
-        <div className="p-4 border-b border-slate-200 dark:border-zinc-800 flex items-center justify-between">
-           <span className="font-semibold text-slate-900 dark:text-zinc-50 text-sm">Anotações ({notes.length})</span>
-           <Button size="icon" variant="ghost" onClick={handleCreateNote} className="h-8 w-8 text-blue-600 dark:text-blue-400">
+    <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-12rem)] min-h-[600px]">
+       {/* Notes List Sidebar - Technical and detailed */}
+       <div className="w-full lg:w-72 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-sm flex flex-col shrink-0 overflow-hidden">
+        <div className="p-4 border-b border-slate-200 dark:border-zinc-800 flex items-center justify-between bg-slate-50/50 dark:bg-zinc-950/50">
+           <span className="font-bold text-slate-900 dark:text-zinc-50 text-sm tracking-tight">Anotações <span className="text-blue-500 ml-1 opacity-70">({notes.length})</span></span>
+           <Button size="icon" variant="ghost" onClick={handleCreateNote} className="h-8 w-8 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20">
              <Plus className="w-5 h-5" />
            </Button>
         </div>
-        <div className="flex-1 overflow-y-auto p-2 space-y-1">
-          {notes.length === 0 && <p className="text-xs text-center text-slate-500 mt-4">Nenhuma anotação.</p>}
+        <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+          {notes.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
+              <FileText className="w-8 h-8 text-slate-300 mb-2" />
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Nenhuma nota</p>
+            </div>
+          )}
           {notes.map((note) => {
              const isSelected = selectedNote?.id === note.id;
              return (
                <div 
                  key={note.id} 
-                 className={`group flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors ${isSelected ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-transparent hover:bg-slate-50 dark:hover:bg-zinc-800/50'}`}
+                 className={cn(
+                    "group flex items-center justify-between p-2.5 rounded-xl border transition-all duration-200 cursor-pointer mb-1",
+                    isSelected 
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-sm' 
+                      : 'border-transparent hover:bg-slate-50 dark:hover:bg-zinc-800/50'
+                 )}
                  onClick={() => handleSelect(note)}
                >
-                 <div className="flex flex-col overflow-hidden">
+                 <div className="flex flex-col overflow-hidden flex-1">
                    <div className="flex items-center gap-2">
-                     <span className={`text-sm font-medium truncate ${isSelected ? 'text-blue-700 dark:text-blue-400' : 'text-slate-700 dark:text-zinc-300'}`}>
+                     <span className={cn(
+                       "text-xs font-bold truncate leading-tight", 
+                       isSelected ? 'text-blue-700 dark:text-blue-400' : 'text-slate-700 dark:text-zinc-300'
+                     )}>
                        {note.title || "Sem título"}
                      </span>
                    </div>
-                   <span className="text-[10px] text-slate-400 mt-0.5">
-                     {new Date(note.updatedAt).toLocaleDateString()}
+                   <span className="text-[9px] font-bold text-slate-400 mt-0.5 uppercase tracking-wider">
+                     {new Date(note.updatedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
                    </span>
                  </div>
-                 <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); note.id && handleDeleteNote(note.id); }}>
-                   <Trash2 className="w-4 h-4" />
+                 <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity translate-x-1 group-hover:translate-x-0" onClick={(e) => { e.stopPropagation(); note.id && handleDeleteNote(note.id); }}>
+                   <Trash2 className="w-3.5 h-3.5" />
                  </Button>
                </div>
              )
@@ -172,8 +185,8 @@ export default function ModuleNotesTab({ moduleId }: { moduleId: string }) {
         </div>
       </div>
 
-      {/* Note Editor / View */}
-      <div className="lg:col-span-3 flex flex-col h-[calc(100vh-14rem)] bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden gap-0">
+      {/* Note Editor / View - Professional Grade Area */}
+      <div className="flex-1 flex flex-col bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-xl overflow-hidden relative">
         {!selectedNote ? (
            <div className="flex-1 flex flex-col items-center justify-center text-slate-500 gap-2">
               <FileText className="w-12 h-12 opacity-50 mb-2" />

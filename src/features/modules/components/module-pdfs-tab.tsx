@@ -127,37 +127,57 @@ export default function ModulePdfsTab({ moduleId }: { moduleId: string }) {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-       {/* PDF List Sidebar */}
-       <div className="lg:col-span-1 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-sm flex flex-col min-h-[400px]">
-        <div className="p-4 border-b border-slate-200 dark:border-zinc-800 flex items-center justify-between">
-           <span className="font-semibold text-slate-900 dark:text-zinc-50 text-sm">Biblioteca ({coursePdfs.length})</span>
-           <Button size="sm" variant="ghost" onClick={handleSelectPdfsForCourse} className="h-8 text-blue-600 dark:text-blue-400">
-             <Upload className="w-4 h-4 mr-1" /> Add
+    <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-12rem)] min-h-[600px]">
+       {/* PDF List Sidebar - Sleek and compact */}
+       <div className="w-full lg:w-72 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-sm flex flex-col shrink-0 overflow-hidden">
+        <div className="p-4 border-b border-slate-200 dark:border-zinc-800 flex items-center justify-between bg-slate-50/50 dark:bg-zinc-950/50">
+           <span className="font-bold text-slate-900 dark:text-zinc-50 text-sm tracking-tight">Biblioteca <span className="text-blue-500 ml-1 opacity-70">({coursePdfs.length})</span></span>
+           <Button size="icon" variant="ghost" onClick={handleSelectPdfsForCourse} className="h-8 w-8 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20">
+             <Upload className="w-4 h-4" />
            </Button>
         </div>
-        <div className="flex-1 overflow-y-auto p-2 space-y-1">
-          {coursePdfs.length === 0 && <p className="text-xs text-center text-slate-500 mt-4">Lista vazia.</p>}
+        <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+          {coursePdfs.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
+              <FileText className="w-8 h-8 text-slate-300 mb-2" />
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Lista Vazia</p>
+            </div>
+          )}
           {coursePdfs.map((meta, i) => (
              <div 
                key={meta.id} 
-               className={`group flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer ${i === currentIndex ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-transparent hover:bg-slate-50 dark:hover:bg-zinc-800/50'}`}
+               className={cn(
+                  "group flex items-center gap-2.5 p-2.5 rounded-xl border transition-all duration-200 cursor-pointer mb-1",
+                  i === currentIndex 
+                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-sm' 
+                    : 'border-transparent hover:bg-slate-50 dark:hover:bg-zinc-800/50'
+               )}
                onClick={() => !needsPermission && setCurrentIndex(i)}
              >
-               <FileText className={`w-4 h-4 shrink-0 ${i === currentIndex ? 'text-blue-500' : 'text-slate-400'}`} />
-               <span className={`text-xs flex-1 truncate font-medium ${i === currentIndex ? 'text-blue-700 dark:text-blue-400' : 'text-slate-700 dark:text-zinc-300'}`}>
+               <div className={cn(
+                 "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors",
+                 i === currentIndex ? "bg-blue-500 text-white" : "bg-slate-100 dark:bg-zinc-800 text-slate-400"
+               )}>
+                 <FileText className="w-4 h-4" />
+               </div>
+               
+               <span className={cn(
+                 "text-xs flex-1 truncate font-bold leading-tight", 
+                 i === currentIndex ? 'text-blue-700 dark:text-blue-400' : 'text-slate-700 dark:text-zinc-300'
+               )}>
                  {meta.name}
                </span>
-               <Button variant="ghost" size="icon" className="h-5 w-5 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); handleDeletePdf(meta, i); }}>
-                 <Trash2 className="w-3 h-3" />
+               
+               <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 translate-x-1 group-hover:translate-x-0" onClick={(e) => { e.stopPropagation(); handleDeletePdf(meta, i); }}>
+                 <Trash2 className="w-3.5 h-3.5" />
                </Button>
              </div>
           ))}
         </div>
       </div>
 
-      {/* PDF Viewer */}
-      <div className="lg:col-span-3 flex flex-col h-[calc(100vh-14rem)] bg-slate-100 dark:bg-zinc-950 rounded-2xl border border-slate-200 dark:border-zinc-800 overflow-hidden">
+      {/* PDF Viewer - Maximized and Immersive */}
+      <div className="flex-1 flex flex-col bg-slate-100 dark:bg-zinc-950 rounded-3xl border border-slate-200 dark:border-zinc-800 overflow-hidden shadow-xl">
         {needsPermission ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center p-8 space-y-4">
               <FileText className="w-12 h-12 text-slate-400 dark:text-zinc-600 mx-auto" />

@@ -187,17 +187,22 @@ export default function ModuleQuizzesTab({ moduleId }: { moduleId: string }) {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-      {/* Sidebar List */}
-      <div className="lg:col-span-1 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-sm flex flex-col h-[400px] lg:h-[calc(100vh-14rem)]">
-        <div className="p-4 border-b border-slate-200 dark:border-zinc-800 flex items-center justify-between">
-           <span className="font-semibold text-slate-900 dark:text-zinc-50 text-sm">Meus Quizzes</span>
-           <Button size="icon" variant="ghost" onClick={handleCreateQuiz} className="h-8 w-8 text-blue-600 dark:text-blue-400">
+    <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-12rem)] min-h-[600px]">
+      {/* Sidebar List - More compact and specialized */}
+      <div className="w-full lg:w-72 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-sm flex flex-col shrink-0 overflow-hidden">
+        <div className="p-4 border-b border-slate-200 dark:border-zinc-800 flex items-center justify-between bg-slate-50/50 dark:bg-zinc-950/50">
+           <span className="font-bold text-slate-900 dark:text-zinc-50 text-sm tracking-tight">Meus Quizzes</span>
+           <Button size="icon" variant="ghost" onClick={handleCreateQuiz} className="h-8 w-8 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20">
              <Plus className="w-5 h-5" />
            </Button>
         </div>
-        <div className="flex-1 overflow-y-auto p-2 space-y-1">
-          {quizzes.length === 0 && <p className="text-xs text-center text-slate-500 mt-4">Nenhum quiz.</p>}
+        <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+          {quizzes.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
+              <BrainCircuit className="w-8 h-8 text-slate-300 mb-2" />
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Nenhum quiz</p>
+            </div>
+          )}
           {quizzes.map((quiz) => {
              const isSelected = selectedQuiz?.id === quiz.id;
              const isRenaming = renamingId === quiz.id;
@@ -206,38 +211,50 @@ export default function ModuleQuizzesTab({ moduleId }: { moduleId: string }) {
                <div 
                  key={quiz.id} 
                  className={cn(
-                    "group flex items-center p-3 rounded-lg border transition-colors cursor-pointer",
-                    isSelected ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-transparent hover:bg-slate-50 dark:hover:bg-zinc-800/50'
+                    "group flex items-center p-2.5 rounded-xl border transition-all duration-200 cursor-pointer mb-1",
+                    isSelected 
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-sm' 
+                      : 'border-transparent hover:bg-slate-50 dark:hover:bg-zinc-800/50'
                  )}
                  onClick={() => handleSelect(quiz)}
                >
-                 <div className="flex items-center gap-3 w-full overflow-hidden">
-                   <BrainCircuit className={cn("w-4 h-4 shrink-0", isSelected ? "text-blue-500" : "text-slate-400")} />
+                 <div className="flex items-center gap-2.5 w-full overflow-hidden">
+                   <div className={cn(
+                     "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors",
+                     isSelected ? "bg-blue-500 text-white" : "bg-slate-100 dark:bg-zinc-800 text-slate-400"
+                   )}>
+                     <BrainCircuit className="w-4 h-4" />
+                   </div>
                    
-                   {isRenaming ? (
-                      <input 
-                         ref={renameInputRef}
-                         defaultValue={quiz.title}
-                         onBlur={(e) => handleRenameSidebar(quiz.id!, e.target.value)}
-                         onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleRenameSidebar(quiz.id!, e.currentTarget.value);
-                            if (e.key === 'Escape') setRenamingId(null);
-                         }}
-                         className="flex-1 min-w-0 bg-white dark:bg-black border border-blue-500 rounded px-1 -ml-1 text-sm outline-none text-slate-900 dark:text-zinc-50"
-                      />
-                   ) : (
-                      <span className={cn("text-sm font-medium truncate flex-1", isSelected ? 'text-blue-700 dark:text-blue-400' : 'text-slate-700 dark:text-zinc-300')}>
-                        {quiz.title}
-                      </span>
-                   )}
+                   <div className="flex-1 min-w-0">
+                     {isRenaming ? (
+                        <input 
+                           ref={renameInputRef}
+                           defaultValue={quiz.title}
+                           onBlur={(e) => handleRenameSidebar(quiz.id!, e.target.value)}
+                           onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleRenameSidebar(quiz.id!, e.currentTarget.value);
+                              if (e.key === 'Escape') setRenamingId(null);
+                           }}
+                           className="w-full bg-white dark:bg-black border border-blue-500 rounded px-1 text-xs font-semibold outline-none text-slate-900 dark:text-zinc-50"
+                        />
+                     ) : (
+                        <span className={cn(
+                          "text-xs font-bold truncate block leading-tight", 
+                          isSelected ? 'text-blue-700 dark:text-blue-400' : 'text-slate-700 dark:text-zinc-300'
+                        )}>
+                          {quiz.title}
+                        </span>
+                     )}
+                   </div>
                    
                    {!isRenaming && (
-                       <div className="flex items-center shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                         <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-blue-500" onClick={(e) => { e.stopPropagation(); setRenamingId(quiz.id!); }}>
-                           <Edit2 className="w-3.5 h-3.5" />
+                       <div className="flex items-center shrink-0 opacity-0 group-hover:opacity-100 transition-opacity translate-x-1 group-hover:translate-x-0">
+                         <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-blue-500 hover:bg-white dark:hover:bg-zinc-700" onClick={(e) => { e.stopPropagation(); setRenamingId(quiz.id!); }}>
+                           <Edit2 className="w-3 h-3" />
                          </Button>
-                         <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-red-500" onClick={(e) => { e.stopPropagation(); quiz.id && handleDeleteQuiz(quiz.id); }}>
-                           <Trash2 className="w-3.5 h-3.5" />
+                         <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-red-500 hover:bg-white dark:hover:bg-zinc-700" onClick={(e) => { e.stopPropagation(); quiz.id && handleDeleteQuiz(quiz.id); }}>
+                           <Trash2 className="w-3 h-3" />
                          </Button>
                        </div>
                    )}
@@ -248,8 +265,8 @@ export default function ModuleQuizzesTab({ moduleId }: { moduleId: string }) {
         </div>
       </div>
 
-      {/* Main Area */}
-      <div className="lg:col-span-3 flex flex-col min-h-[500px] lg:h-[calc(100vh-14rem)] bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden">
+      {/* Main Area - Maximized */}
+      <div className="flex-1 flex flex-col bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-xl overflow-hidden relative">
         {!selectedQuiz ? (
            <div className="flex-1 flex flex-col items-center justify-center text-slate-500 gap-2 p-6 text-center">
               <BrainCircuit className="w-12 h-12 opacity-50 mb-2 text-blue-500" />
