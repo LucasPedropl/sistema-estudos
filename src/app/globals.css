@@ -16,6 +16,19 @@
   body {
     @apply bg-slate-50 text-slate-900 dark:bg-zinc-950 dark:text-zinc-50;
   }
+  button, 
+  [role="button"],
+  a,
+  input[type="submit"],
+  input[type="button"],
+  input[type="checkbox"],
+  input[type="radio"],
+  select,
+  label,
+  summary,
+  .cursor-pointer {
+    cursor: pointer;
+  }
 }
 
 @layer utilities {
