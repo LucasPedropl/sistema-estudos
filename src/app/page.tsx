@@ -79,7 +79,15 @@ export default function Home() {
         ) : modules.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {modules.map((module) => (
-              <ModuleCard key={module.id} module={{ id: module.id, name: module.name, description: module.description, progress: 0, lastAccessed: new Date(module.createdAt).toISOString() }} />
+              <ModuleCard key={module.id} module={{ 
+                id: module.id, 
+                title: module.name, 
+                description: module.description, 
+                progress: 0, 
+                totalTopics: 0,
+                completedTopics: 0,
+                lastAccessed: new Date(module.createdAt).toISOString() 
+              }} />
             ))}
           </div>
         ) : (

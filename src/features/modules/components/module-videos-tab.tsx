@@ -14,10 +14,6 @@ export default function ModuleVideosTab({ moduleId }: { moduleId: string }) {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [needsPermission, setNeedsPermission] = useState(false);
 
-  useEffect(() => {
-    loadCourseVideos();
-  }, [moduleId]);
-
   async function loadCourseVideos() {
     const videos = await getVideosForModule(moduleId);
     setCourseVideos(videos);
@@ -32,6 +28,26 @@ export default function ModuleVideosTab({ moduleId }: { moduleId: string }) {
        setCurrentIndex(0);
     } else {
       setNeedsPermission(false);
+    }
+  }
+
+  useEffect(() => {
+    loadCourseVideos();
+  }, [moduleId]);
+
+  async function playVideoByMeta(meta: VideoMetadata) {
+    try {
+      const handlesMap = await getHandlesMap();
+      const handle = handlesMap[meta.localHandleId];
+      if (!handle) {
+         setVideoUrl(null);
+         return;
+      }
+      const file = await handle.getFile();
+      const url = URL.createObjectURL(file);
+      setVideoUrl(url);
+    } catch (err) {
+      console.error("Error loading file", err);
     }
   }
 
@@ -71,21 +87,6 @@ export default function ModuleVideosTab({ moduleId }: { moduleId: string }) {
     }
   }
 
-  async function playVideoByMeta(meta: VideoMetadata) {
-    try {
-      const handlesMap = await getHandlesMap();
-      const handle = handlesMap[meta.localHandleId];
-      if (!handle) {
-         setVideoUrl(null);
-         return;
-      }
-      const file = await handle.getFile();
-      const url = URL.createObjectURL(file);
-      setVideoUrl(url);
-    } catch (err) {
-      console.error("Error loading file", err);
-    }
-  }
 
   async function handleSelectVideosForCourse() {
     try {

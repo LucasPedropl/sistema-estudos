@@ -13,10 +13,6 @@ export default function ModulePdfsTab({ moduleId }: { moduleId: string }) {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [needsPermission, setNeedsPermission] = useState(false);
 
-  useEffect(() => {
-    loadCoursePdfs();
-  }, [moduleId]);
-
   async function loadCoursePdfs() {
     const pdfs = await getPdfsForModule(moduleId);
     setCoursePdfs(pdfs);
@@ -31,6 +27,26 @@ export default function ModulePdfsTab({ moduleId }: { moduleId: string }) {
        setCurrentIndex(0);
     } else {
       setNeedsPermission(false);
+    }
+  }
+
+  useEffect(() => {
+    loadCoursePdfs();
+  }, [moduleId]);
+
+  async function loadPdfByMeta(meta: PDFMetadata) {
+    try {
+      const handlesMap = await getHandlesMap();
+      const handle = handlesMap[meta.localHandleId];
+      if (!handle) {
+         setPdfUrl(null);
+         return;
+      }
+      const file = await handle.getFile();
+      const url = URL.createObjectURL(file);
+      setPdfUrl(url);
+    } catch (err) {
+      console.error("Error loading file", err);
     }
   }
 
@@ -72,21 +88,6 @@ export default function ModulePdfsTab({ moduleId }: { moduleId: string }) {
     }
   }
 
-  async function loadPdfByMeta(meta: PDFMetadata) {
-    try {
-      const handlesMap = await getHandlesMap();
-      const handle = handlesMap[meta.localHandleId];
-      if (!handle) {
-         setPdfUrl(null);
-         return;
-      }
-      const file = await handle.getFile();
-      const url = URL.createObjectURL(file);
-      setPdfUrl(url);
-    } catch (err) {
-      console.error("Error loading file", err);
-    }
-  }
 
   async function handleSelectPdfsForCourse() {
     try {
