@@ -7,6 +7,7 @@ import { Button } from "@/src/components/ui/button";
 import { Play, SkipForward, SkipBack, Upload, ListVideo, Trash2, Box, PlusCircle } from "lucide-react";
 import { useAuth } from "@/src/components/auth-provider";
 import { createModule, getModules, addVideoToModule, getVideosForModule, ModuleData, VideoMetadata } from "@/src/features/modules/services/module.service";
+import { CustomVideoPlayer } from "@/src/features/video/components/custom-video-player";
 
 // Using IndexedDB only to map UUIDs to strictly non-serializable FileSystemFileHandles.
 // The UUIDs and names are saved safely to Firebase, cross-referencing this map on load.
@@ -195,7 +196,7 @@ export function LocalVideoPlayer() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
       {/* Cursos Sidebar */}
-      <div className="lg:col-span-1 border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm p-4 flex flex-col h-[calc(100vh-14rem)]">
+      <div className="lg:col-span-1 border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm p-4 flex flex-col h-[400px] lg:h-[calc(100vh-14rem)]">
          <div className="flex items-center justify-between mb-4 border-b border-slate-100 dark:border-zinc-800 pb-4">
            <h3 className="font-semibold text-slate-900 dark:text-zinc-50 flex items-center gap-2">
              <Box className="w-4 h-4" />
@@ -261,13 +262,10 @@ export function LocalVideoPlayer() {
                   </Button>
                 </div>
               ) : videoUrl ? (
-                <video 
-                  ref={videoRef}
+                <CustomVideoPlayer 
                   src={videoUrl} 
-                  controls 
-                  autoPlay 
-                  className="w-full h-full object-contain"
-                  onEnded={handleVideoEnd}
+                  onEnded={handleVideoEnd} 
+                  className="w-full h-full"
                 />
               ) : (
                 <div className="text-slate-500 flex flex-col items-center gap-2">

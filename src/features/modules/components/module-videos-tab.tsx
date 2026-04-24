@@ -1,18 +1,18 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { Button } from "@/src/components/ui/button";
 import { Play, SkipForward, SkipBack, Upload, ListVideo, Trash2 } from "lucide-react";
 import { addVideoToModule, getVideosForModule, VideoMetadata, deleteVideoMetadata } from "@/src/features/modules/services/module.service";
 import { getHandlesMap, saveHandlesMap } from "@/src/features/video/components/local-video-player";
+import { CustomVideoPlayer } from "@/src/features/video/components/custom-video-player";
 
 export default function ModuleVideosTab({ moduleId }: { moduleId: string }) {
   const [courseVideos, setCourseVideos] = useState<VideoMetadata[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [needsPermission, setNeedsPermission] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     loadCourseVideos();
@@ -144,7 +144,11 @@ export default function ModuleVideosTab({ moduleId }: { moduleId: string }) {
               </Button>
             </div>
           ) : videoUrl ? (
-            <video ref={videoRef} src={videoUrl} controls autoPlay className="w-full h-full object-contain" onEnded={handleVideoEnd} />
+            <CustomVideoPlayer 
+              src={videoUrl} 
+              onEnded={handleVideoEnd} 
+              className="w-full h-full"
+            />
           ) : (
             <div className="text-slate-500 flex flex-col items-center gap-2">
               <Upload className="w-8 h-8 opacity-50 mb-2" />
@@ -173,7 +177,7 @@ export default function ModuleVideosTab({ moduleId }: { moduleId: string }) {
       </div>
 
       {/* Fila */}
-      <div className="lg:col-span-1 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-sm flex flex-col h-[calc(100vh-18rem)] min-h-[400px]">
+      <div className="lg:col-span-1 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-sm flex flex-col h-[400px] lg:h-[calc(100vh-18rem)]">
         <div className="p-4 border-b border-slate-200 dark:border-zinc-800 flex items-center justify-between">
            <span className="font-semibold text-slate-900 dark:text-zinc-50 text-sm">Fila ({courseVideos.length})</span>
            <Button size="sm" variant="ghost" onClick={handleSelectVideosForCourse} className="h-8 text-blue-600 dark:text-blue-400">
