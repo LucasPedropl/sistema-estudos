@@ -7,6 +7,7 @@ import { Play, SkipForward, SkipBack, Upload, ListVideo, Trash2 } from "lucide-r
 import { addVideoToModule, getVideosForModule, VideoMetadata, deleteVideoMetadata } from "@/src/features/modules/services/module.service";
 import { getHandlesMap, saveHandlesMap } from "@/src/features/video/components/local-video-player";
 import { CustomVideoPlayer } from "@/src/features/video/components/custom-video-player";
+import { cn } from "@/src/lib/utils";
 
 export default function ModuleVideosTab({ moduleId }: { moduleId: string }) {
   const [courseVideos, setCourseVideos] = useState<VideoMetadata[]>([]);

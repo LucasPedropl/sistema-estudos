@@ -6,6 +6,7 @@ import { Button } from "@/src/components/ui/button";
 import { Upload, Trash2, FileText } from "lucide-react";
 import { addPdfToModule, getPdfsForModule, PDFMetadata, deletePdfMetadata } from "@/src/features/modules/services/module.service";
 import { getHandlesMap, saveHandlesMap } from "@/src/features/video/components/local-video-player"; // reusing the same IDB store mapping
+import { cn } from "@/src/lib/utils";
 
 export default function ModulePdfsTab({ moduleId }: { moduleId: string }) {
   const [coursePdfs, setCoursePdfs] = useState<PDFMetadata[]>([]);
