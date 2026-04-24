@@ -372,7 +372,8 @@ export default function ModuleQuizzesTab({ moduleId }: { moduleId: string }) {
                       <div className="flex-1 flex flex-col items-center justify-center text-slate-500 min-h-[300px]">
                          <BrainCircuit className="w-12 h-12 opacity-50 mb-4" />
                          <p>Nenhuma pergunta válida encontrada no JSON.</p>
-                                 ) : reviewMode ? (
+                      </div>
+                    ) : reviewMode ? (
                       <div className="max-w-3xl w-full mx-auto flex flex-col py-4 sm:py-8 animate-fade-in-up">
                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
                              <h2 className="text-2xl font-bold text-slate-900 dark:text-zinc-50">Avaliação de Destaques</h2>
@@ -405,7 +406,7 @@ export default function ModuleQuizzesTab({ moduleId }: { moduleId: string }) {
                             )}
                          </div>
                       </div>
-                    ) : isFinished ? (    ) : isFinished ? (
+                    ) : isFinished ? (
                       <div className="flex-1 flex flex-col items-center justify-center text-center animate-fade-in-up min-h-[300px]">
                          <div className="w-24 h-24 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-6">
                            <span className="text-4xl font-display font-bold text-blue-600 dark:text-blue-400">
