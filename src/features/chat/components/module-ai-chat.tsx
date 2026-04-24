@@ -120,9 +120,9 @@ Responda em Markdown. Seja conciso e educado.`;
        // Format chat history
        const history = messages.map(m => ({ role: m.role, parts: [{ text: m.text }] }));
        
-       // Use gemini-2.5-flash which is the standard fast model
+       // Use the recommended model for text tasks
        const response = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
+          model: "gemini-3-flash-preview",
           contents: [
              ...history,
              { role: "user", parts: [{ text: userMsg }] }
